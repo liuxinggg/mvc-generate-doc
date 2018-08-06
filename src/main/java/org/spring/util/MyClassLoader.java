@@ -21,7 +21,7 @@ public class MyClassLoader {
     public static Class<?> LoaderClass(String classpath, String className)
             throws MalformedURLException, ClassNotFoundException {
                 ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
-        URL classes = new URL("file:///" + classpath);
+        URL classes = new URL("file:///" + classpath + "/");
         ClassLoader custom = new URLClassLoader(new URL[]{classes}, systemClassLoader);
         return ClassUtils.getClass(custom, className, false);
     }

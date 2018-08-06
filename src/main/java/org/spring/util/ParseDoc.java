@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ValueConstants;
 
 import java.lang.reflect.Method;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +65,8 @@ public class ParseDoc {
 
             RequestMapping methodMappingAnno = AnnotatedElementUtils
                     .getMergedAnnotation(method, RequestMapping.class);
-            if(methodMappingAnno == null) {     //没有找到RequestMapping
+            if(methodMappingAnno == null) {
+                //没有找到RequestMapping
                 continue;
             }
 
@@ -77,7 +77,7 @@ public class ParseDoc {
             int i = 0;
             for (String classMapping : classMappings) {
                 for (String methodMapping : methodMappings) {
-                    requestUrls[i++] = Paths.get(classMapping, methodMapping).toString();
+                    requestUrls[i++] = PathUtils.combine(classMapping, methodMapping);
                 }
             }
             apiDoc.setRequestUrls(requestUrls);
@@ -85,11 +85,11 @@ public class ParseDoc {
             //获取method上的请求方式
             RequestMethod[] methodRequestMethods = methodMappingAnno.method();
             RequestMethod[] requestMethods = ArrayUtils.addAll(classRequestMethod, methodRequestMethods);
-            String[] MethodStrs = new String[requestMethods.length];
+            String[] methodStrs = new String[requestMethods.length];
             for (int j = 0; j < requestMethods.length; j++) {
-                MethodStrs[j] = requestMethods[j].toString();
+                methodStrs[j] = requestMethods[j].toString();
             }
-            apiDoc.setRequestMethods(MethodStrs);
+            apiDoc.setRequestMethods(methodStrs);
 
             //获取描述信息
             String commentText = methodDoc.getRawCommentText();
@@ -112,7 +112,7 @@ public class ParseDoc {
                 requestParameter.setDescription(paramTag.parameterComment());
                 for (int j = 0; j < parameterDocs.length; j++) {
                     if(StringUtils.equals(paramTag.parameterName(), parameterDocs[j].name())) {
-                        requestParameter.setType(parameterDocs[j].type().toString());
+                        requestParameter.setType(parameterClass[j]);
                         MethodParameter methodParameter = new MethodParameter(method, j);
                         RequestParam requestParam = methodParameter.getParameterAnnotation(RequestParam.class);
                         if(requestParam != null) {

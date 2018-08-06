@@ -71,7 +71,8 @@ public class MvcGenerateDocApplication implements CommandLineRunner {
     }
 
     @Autowired
-    public void setCoreConfig(CoreConfig coreConfig, ParseDoc parseDoc,
+    public void setCoreConfig(CoreConfig coreConfig,
+            ParseDoc parseDoc,
             Configuration configuration) {
         this.coreConfig = coreConfig;
         this.parseDoc = parseDoc;
