@@ -14,9 +14,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @SpringBootApplication
 public class MvcGenerateDocApplication implements CommandLineRunner {
@@ -31,23 +36,35 @@ public class MvcGenerateDocApplication implements CommandLineRunner {
     public void run(String... strings) throws Exception {
         File file = new File(coreConfig.getCodePath());
         readFile(file);
-        ArrayList<List<ApiDoc>> list = new ArrayList<>();
+        Map<ClassDoc, List<ApiDoc>> map = new HashMap<>();
         for (RootDoc rootDoc : docList) {
             for (ClassDoc classDoc : rootDoc.classes()) {
                 List<ApiDoc> apiDocs = parseDoc.parseJavaDocToApiDoc(classDoc);
-                list.add(apiDocs);
+                map.put(classDoc, apiDocs);
             }
         }
 
-        //
+
         Template template = configuration.getTemplate("doc.ftl");
-        for (List<ApiDoc> apiDocs : list) {
+        for (Map.Entry<ClassDoc, List<ApiDoc>> apiDocEntry : map.entrySet()) {
+            List<ApiDoc> apiDocs = apiDocEntry.getValue();
+            StringBuilder sb = new StringBuilder();
             for (ApiDoc apiDoc : apiDocs) {
-                String str = FreeMarkerTemplateUtils
-                        .processTemplateIntoString(template, apiDoc);
-                System.out.println(str);
+                sb.append(FreeMarkerTemplateUtils
+                        .processTemplateIntoString(template, apiDoc));
+            }
+            String rawCommentText = apiDocEntry.getKey().getRawCommentText();
+            String[] split = rawCommentText.split("\n");
+            String fileName = split[0].trim() + ".md";
+            File apiDocFile = new File(coreConfig.getSaveDocPath(), fileName);
+            if(!apiDocFile.getParentFile().exists()) {
+                apiDocFile.getParentFile().mkdirs();
+            }
+            try(FileWriter fw = new FileWriter((apiDocFile))) {
+                fw.write(sb.toString());
             }
         }
+
     }
 
     private void readFile(File file) {

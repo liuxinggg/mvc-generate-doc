@@ -1,23 +1,22 @@
 package org.spring.util;
 
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.MethodDoc;
-import com.sun.javadoc.ParamTag;
-import com.sun.javadoc.Parameter;
+import com.sun.javadoc.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.spring.config.CoreConfig;
 import org.spring.entity.ApiDoc;
 import org.spring.entity.RequestParameter;
+import org.spring.entity.ResponseData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ValueConstants;
+import org.springframework.web.bind.annotation.*;
 
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,16 +114,52 @@ public class ParseDoc {
                         requestParameter.setType(parameterClass[j]);
                         MethodParameter methodParameter = new MethodParameter(method, j);
                         RequestParam requestParam = methodParameter.getParameterAnnotation(RequestParam.class);
+                        PathVariable pathVariable = methodParameter.getParameterAnnotation(PathVariable.class);
                         if(requestParam != null) {
+                            String name = requestParam.name();
+                            if(StringUtils.isNotBlank(name)){
+                                requestParameter.setName(name);
+                            }
                             requestParameter.setRequired(requestParam.required());
                             String defaultValue = requestParam.defaultValue();
-                            requestParameter.setDefaultValue(ValueConstants.DEFAULT_NONE.equals(defaultValue) ? null : defaultValue);
+                            if(!ValueConstants.DEFAULT_NONE.equals(defaultValue)) {
+                                //设置了默认值
+                                requestParameter.setRequired(false);
+                                requestParameter.setDefaultValue(defaultValue);
+                            }
                         }
+                        if(pathVariable != null) {
+                            requestParameter.setRequired(true);
+                        }
+                        break;
                     }
                 }
                 params.add(requestParameter);
             }
             apiDoc.setParams(params);
+
+            //获取相应结果对象信息
+            Class<?> returnType = method.getReturnType();
+            String returnTypeName = returnType.getName();
+            Class<?> returnClass = MyClassLoader.LoaderClass(coreConfig.getClassPath(), returnTypeName);
+            if(!returnClass.equals(void.class)) {
+                BeanInfo beanInfo = Introspector.getBeanInfo(returnClass);
+                PropertyDescriptor[] proDescrtptors = beanInfo.getPropertyDescriptors();
+                if (proDescrtptors != null && proDescrtptors.length > 0) {
+                    for (PropertyDescriptor propDesc : proDescrtptors) {
+                        ResponseData responseData = new ResponseData();
+                        Method readMethod = propDesc.getReadMethod();
+                        String name = propDesc.getName();
+                        for (FieldDoc fieldDoc : classDoc.fields()) {
+                            if(fieldDoc.name().equals(name)) {
+                                responseData.setDescription(fieldDoc.getRawCommentText());
+                                responseData.setType(readMethod.getReturnType());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
             apiDocList.add(apiDoc);
         }
