@@ -2,6 +2,9 @@ package org.spring.util;
 
 import org.springframework.util.StringUtils;
 
+/**
+ * 处理spring mapping path
+ */
 public class PathUtils {
 
     private static final String DEFAULT_PATH_SEPARATOR = "/";

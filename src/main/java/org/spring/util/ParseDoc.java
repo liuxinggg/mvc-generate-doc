@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -144,9 +143,9 @@ public class ParseDoc {
             Class<?> returnClass = MyClassLoader.LoaderClass(coreConfig.getClassPath(), returnTypeName);
             if(!returnClass.equals(void.class)) {
                 BeanInfo beanInfo = Introspector.getBeanInfo(returnClass);
-                PropertyDescriptor[] proDescrtptors = beanInfo.getPropertyDescriptors();
-                if (proDescrtptors != null && proDescrtptors.length > 0) {
-                    for (PropertyDescriptor propDesc : proDescrtptors) {
+                PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+                if (propertyDescriptors != null && propertyDescriptors.length > 0) {
+                    for (PropertyDescriptor propDesc : propertyDescriptors) {
                         ResponseData responseData = new ResponseData();
                         Method readMethod = propDesc.getReadMethod();
                         String name = propDesc.getName();

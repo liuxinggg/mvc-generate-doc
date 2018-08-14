@@ -48,11 +48,10 @@ public class MvcGenerateDocApplication implements CommandLineRunner {
         Template template = configuration.getTemplate("doc.ftl");
         for (Map.Entry<ClassDoc, List<ApiDoc>> apiDocEntry : map.entrySet()) {
             List<ApiDoc> apiDocs = apiDocEntry.getValue();
-            StringBuilder sb = new StringBuilder();
-            for (ApiDoc apiDoc : apiDocs) {
-                sb.append(FreeMarkerTemplateUtils
-                        .processTemplateIntoString(template, apiDoc));
-            }
+            Map<String, Object> data = new HashMap<>();
+            data.put("docs", apiDocs);
+            String str = FreeMarkerTemplateUtils
+                    .processTemplateIntoString(template, data);
             String rawCommentText = apiDocEntry.getKey().getRawCommentText();
             String[] split = rawCommentText.split("\n");
             String fileName = split[0].trim() + ".md";
@@ -60,8 +59,8 @@ public class MvcGenerateDocApplication implements CommandLineRunner {
             if(!apiDocFile.getParentFile().exists()) {
                 apiDocFile.getParentFile().mkdirs();
             }
-            try(FileWriter fw = new FileWriter((apiDocFile))) {
-                fw.write(sb.toString());
+            try(FileWriter fw = new FileWriter(apiDocFile)) {
+                fw.write(str);
             }
         }
 
