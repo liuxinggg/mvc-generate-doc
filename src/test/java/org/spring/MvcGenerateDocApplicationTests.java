@@ -11,12 +11,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 @SpringBootTest
 public class MvcGenerateDocApplicationTests {
 
-    @Autowired
-    CoreConfig coreConfig;
-
     @Test
     public void contextLoads() {
-        System.out.println(coreConfig);
+
     }
 
 }

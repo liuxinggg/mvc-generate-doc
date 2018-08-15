@@ -1,19 +1,24 @@
+<#list docs as doc>
 **描述：**
-- ${description}
+- ${doc.description}
 
 **请求URL：**
-<#list requestUrls as url>
+<#list doc.requestUrls as url>
 - ` ${url} `
 </#list>
 
 **请求方式：**
-- <#list requestMethods as method>` ${method} `</#list>
+<#if (doc.params?size > 0)>
+- <#list doc.requestMethods as method>` ${method} `</#list>
+<#else>
+- 不限
+</#if>
 
 **参数：**
-<#if (params?size > 0)>
+<#if (doc.params?size > 0)>
 |参数名|必选|类型|说明|默认值|
 |:----:|:----:|:----:|:----:|:----:|
-<#list params as param>
+<#list doc.params as param>
 |${param.name} |<#if (param.required)>是<#else>否</#if> |${param.type} |${param.description}|${param.defaultValue!"无"}|
 </#list>
 <#else>
@@ -43,6 +48,9 @@
 <#--**备注**-->
 
 <#--- 更多返回错误代码请看首页的错误代码描述-->
+<#if doc_has_next>
+
+
 
 
 
@@ -50,3 +58,5 @@
 
 
 
+</#if>
+</#list>

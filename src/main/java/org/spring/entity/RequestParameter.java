@@ -26,4 +26,7 @@ public class RequestParameter {
     public void setType(Class type) {
         this.type = JavaTypeConvert.getTypeString(type);
     }
+    public void setType(String type) {
+        this.type = type;
+    }
 }

@@ -1,6 +1,9 @@
 package org.spring.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.javadoc.*;
+import com.sun.javadoc.Parameter;
+import com.sun.javadoc.ParameterizedType;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.spring.config.CoreConfig;
@@ -14,11 +17,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.*;
+import java.util.*;
 
 /**
  * 解析java doc
@@ -139,29 +142,60 @@ public class ParseDoc {
 
             //获取相应结果对象信息
             Class<?> returnType = method.getReturnType();
-            String returnTypeName = returnType.getName();
-            Class<?> returnClass = MyClassLoader.LoaderClass(coreConfig.getClassPath(), returnTypeName);
-            if(!returnClass.equals(void.class)) {
-                BeanInfo beanInfo = Introspector.getBeanInfo(returnClass);
-                PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
-                if (propertyDescriptors != null && propertyDescriptors.length > 0) {
-                    for (PropertyDescriptor propDesc : propertyDescriptors) {
-                        ResponseData responseData = new ResponseData();
-                        Method readMethod = propDesc.getReadMethod();
-                        String name = propDesc.getName();
-                        for (FieldDoc fieldDoc : classDoc.fields()) {
-                            if(fieldDoc.name().equals(name)) {
-                                responseData.setDescription(fieldDoc.getRawCommentText());
-                                responseData.setType(readMethod.getReturnType());
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+            Map<String, Object> data = fun(returnType);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String responseDemo = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(data);
+            apiDoc.setResponseDemo(responseDemo);
 
             apiDocList.add(apiDoc);
         }
         return apiDocList;
+    }
+
+    private Map<String, Object> fun(Class clazz) throws IntrospectionException {
+
+        Map<String, Object> map = null;
+        try {
+            Field[] fields = clazz.getDeclaredFields();
+            map = new HashMap<>(fields.length);
+            for (Field field : fields) {
+
+                PropertyDescriptor propertyDescriptor = new PropertyDescriptor(field.getName(), clazz);
+                Method readMethod = propertyDescriptor.getReadMethod();
+                if(readMethod == null) {
+                    continue;
+                }
+                Class<?> type = propertyDescriptor.getPropertyType();
+                if(type.isArray()) {
+                    Class<?> componentType = type.getComponentType();
+
+
+                    if(clazz.getPackage().equals(componentType.getPackage())){
+                        ArrayList<Map<String, Object>> list = new ArrayList<>(1);
+                        list.add(fun(componentType));
+                        map.put(propertyDescriptor.getName(), list);
+                        continue;
+                    }
+
+                }else if(Collection.class.isAssignableFrom(type)){
+                    java.lang.reflect.Type genericType = field.getGenericType();
+                    if(genericType instanceof java.lang.reflect.ParameterizedType) {
+                        //是泛型参数的类型
+                        java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) genericType;
+                        Class<?> componentType = (Class<?>)pt.getActualTypeArguments()[0];
+                        if(clazz.getPackage().equals(componentType.getPackage())) {
+                            ArrayList<Map<String, Object>> list = new ArrayList<>(1);
+                            list.add(fun(componentType));
+                            map.put(propertyDescriptor.getName(), list);
+                            continue;
+                        }
+                    }
+                }
+                map.put(propertyDescriptor.getName(), "");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return map;
     }
 }
