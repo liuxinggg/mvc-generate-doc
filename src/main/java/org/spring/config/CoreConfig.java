@@ -14,8 +14,10 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "generate")
 public class CoreConfig {
-    /** 源码路径 */
+    /** controller源码路径 */
     private String codePath;
+    /** 源码根路径 */
+    private String codeRootPath;
     /** 源码classpath */
     private String classPath;
     /** 生成文档路径 */

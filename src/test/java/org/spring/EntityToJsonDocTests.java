@@ -1,32 +1,17 @@
 package org.spring;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
-import net.sf.json.JsonConfig;
-import net.sf.json.processors.DefaultValueProcessorMatcher;
-import net.sf.json.processors.JsonValueProcessorMatcher;
-import net.sf.json.util.PropertyExclusionClassMatcher;
-import net.sf.json.util.PropertyFilter;
-import net.sf.json.util.PropertySetStrategy;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.beanutils.PropertyUtils;
 import org.junit.Test;
-import org.spring.entity.ApiDoc;
-import org.spring.entity.RequestParameter;
 
 import java.beans.IntrospectionException;
 import java.beans.PropertyDescriptor;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class EntityToJsonDocTests {
 
@@ -51,10 +36,10 @@ public class EntityToJsonDocTests {
 //        System.out.println(s);
 
 
-        Map<String, Object> map = new HashMap<>();
-        Class<ApiDoc> clazz = ApiDoc.class;
-        Map<String, Object> fun = fun(clazz);
-        System.out.println(JSONObject.fromObject(fun));
+//        Map<String, Object> map = new HashMap<>();
+//        Class<ApiDoc> clazz = ApiDoc.class;
+//        Map<String, Object> fun = fun(clazz);
+//        System.out.println(JSONObject.fromObject(fun));
     }
 
     public Map<String, Object> fun(Class clazz) throws IntrospectionException {

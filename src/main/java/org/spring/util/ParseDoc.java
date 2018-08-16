@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.javadoc.*;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.ParameterizedType;
+import com.sun.tools.javadoc.ClassDocImpl;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.spring.config.CoreConfig;
 import org.spring.entity.ApiDoc;
@@ -15,12 +17,15 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
+import sun.reflect.generics.repository.ClassRepository;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.*;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.*;
 
 /**
@@ -142,7 +147,13 @@ public class ParseDoc {
 
             //获取相应结果对象信息
             Class<?> returnType = method.getReturnType();
-            Map<String, Object> data = fun(returnType);
+            Type genericReturnType = method.getGenericReturnType();
+            Type[] actualTypeArguments = null;
+            if(genericReturnType instanceof java.lang.reflect.ParameterizedType) {
+                java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) genericReturnType;
+                actualTypeArguments =  pt.getActualTypeArguments();
+            }
+            Map<String, Object> data = fun(returnType, actualTypeArguments);
             ObjectMapper objectMapper = new ObjectMapper();
             String responseDemo = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(data);
             apiDoc.setResponseDemo(responseDemo);
@@ -152,49 +163,86 @@ public class ParseDoc {
         return apiDocList;
     }
 
-    private Map<String, Object> fun(Class clazz) throws IntrospectionException {
+    private Map<String, Object> fun(Class clazz, Type ... genericTypes) throws Exception {
 
-        Map<String, Object> map = null;
-        try {
-            Field[] fields = clazz.getDeclaredFields();
-            map = new HashMap<>(fields.length);
-            for (Field field : fields) {
+        RootDoc docClass = JavaDocReader.getDocClass(coreConfig.getClassPath(), coreConfig.getCodeRootPath(), clazz.getName());
+        ClassDoc[] classes = docClass.classes();
+        ClassDoc classDoc = classes[0];
 
-                PropertyDescriptor propertyDescriptor = new PropertyDescriptor(field.getName(), clazz);
-                Method readMethod = propertyDescriptor.getReadMethod();
-                if(readMethod == null) {
+        Method getGenericInfo = clazz.getClass().getDeclaredMethod("getGenericInfo");
+        getGenericInfo.setAccessible(true);
+        ClassRepository genericInfo = (ClassRepository)getGenericInfo.invoke(clazz);
+        Map<String, Class> genericMap = new HashMap<>();
+        if(genericInfo != null) {
+            TypeVariable<?>[] typeParameters = genericInfo.getTypeParameters();
+            for (int i = 0; i < typeParameters.length; i++) {
+                genericMap.put(typeParameters[i].getName(), (Class) genericTypes[i]);
+            }
+        }
+
+        Map<Field, ClassDoc> fieldClassDocMap = new HashMap<>();
+        Field[] fields = clazz.getDeclaredFields();
+        for (Field field : fields) {
+            fieldClassDocMap.put(field, classDoc);
+        }
+        List<Class<?>> allSuperclasses = ClassUtils.getAllSuperclasses(clazz);
+        for (Class<?> superclass : allSuperclasses) {
+            if(superclass.getPackage().equals(clazz.getPackage())) {
+                Field[] superFields = superclass.getDeclaredFields();
+                fields = ArrayUtils.addAll(fields, superFields);
+                RootDoc superDocClass = JavaDocReader.getDocClass(coreConfig.getClassPath(), coreConfig.getCodeRootPath(), superclass.getName());
+                ClassDoc[] superClasses = superDocClass.classes();
+                ClassDoc superClassDoc = superClasses[0];
+                for (Field superField : superFields) {
+                    fieldClassDocMap.put(superField, superClassDoc);
+                }
+            }
+        }
+
+        Map<String, Object> map = new HashMap<>(fields.length);
+        for (Field field : fields) {
+
+            PropertyDescriptor propertyDescriptor = new PropertyDescriptor(field.getName(), clazz);
+            Method readMethod = propertyDescriptor.getReadMethod();
+            if(readMethod == null) {
+                continue;
+            }
+            Class<?> type = propertyDescriptor.getPropertyType();
+            if(type.isArray()) {
+                Class<?> componentType = type.getComponentType();
+
+
+                if(clazz.getPackage().equals(componentType.getPackage())){
+                    ArrayList<Map<String, Object>> list = new ArrayList<>(1);
+                    list.add(fun(componentType));
+                    map.put(propertyDescriptor.getName(), list);
                     continue;
                 }
-                Class<?> type = propertyDescriptor.getPropertyType();
-                if(type.isArray()) {
-                    Class<?> componentType = type.getComponentType();
 
-
-                    if(clazz.getPackage().equals(componentType.getPackage())){
+            }else if(Collection.class.isAssignableFrom(type)){
+                java.lang.reflect.Type genericType = field.getGenericType();
+                if(genericType instanceof java.lang.reflect.ParameterizedType) {
+                    //是泛型参数的类型
+                    java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) genericType;
+                    Type type1 = pt.getActualTypeArguments()[0];
+                    Class<?> componentType;
+                    if(type1 instanceof Class) {
+                        componentType = (Class)type1;
+                    }else {
+                        String typeName = type1.getTypeName();
+                        componentType = genericMap.get(typeName);
+                    }
+                    if(componentType != null && clazz.getPackage().equals(componentType.getPackage())) {
                         ArrayList<Map<String, Object>> list = new ArrayList<>(1);
                         list.add(fun(componentType));
                         map.put(propertyDescriptor.getName(), list);
                         continue;
                     }
-
-                }else if(Collection.class.isAssignableFrom(type)){
-                    java.lang.reflect.Type genericType = field.getGenericType();
-                    if(genericType instanceof java.lang.reflect.ParameterizedType) {
-                        //是泛型参数的类型
-                        java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) genericType;
-                        Class<?> componentType = (Class<?>)pt.getActualTypeArguments()[0];
-                        if(clazz.getPackage().equals(componentType.getPackage())) {
-                            ArrayList<Map<String, Object>> list = new ArrayList<>(1);
-                            list.add(fun(componentType));
-                            map.put(propertyDescriptor.getName(), list);
-                            continue;
-                        }
-                    }
                 }
-                map.put(propertyDescriptor.getName(), "");
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            ClassDocImpl classDocImpl = (ClassDocImpl)fieldClassDocMap.get(field);
+            FieldDoc fieldDoc = classDocImpl.findField(propertyDescriptor.getName());
+            map.put(propertyDescriptor.getName(), fieldDoc.getRawCommentText().trim());
         }
         return map;
     }

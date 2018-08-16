@@ -3,7 +3,6 @@ package org.spring.entity;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.List;
 
